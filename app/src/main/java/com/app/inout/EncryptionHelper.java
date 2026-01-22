@@ -8,6 +8,9 @@ import android.util.Log;
 import androidx.security.crypto.EncryptedSharedPreferences;
 import androidx.security.crypto.MasterKeys;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
@@ -33,7 +36,6 @@ public class EncryptionHelper {
     private static final String KEY_IS_SETUP_DONE = "key_is_setup_done";
 
     // Hardcoded Key for QR Code Encryption (Shared between Admin & Employee logic)
-    // In a production app, this should be more complex or rotated.
     private static final String QR_ENCRYPTION_KEY = "InOutAppSuperSecretKey2026";
     private static final String AES_ALGORITHM = "AES";
 
@@ -42,10 +44,7 @@ public class EncryptionHelper {
 
     private EncryptionHelper(Context context) {
         try {
-            // Create or retrieve the Master Key for Android Keystore
             String masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC);
-
-            // Initialize EncryptedSharedPreferences
             sharedPreferences = EncryptedSharedPreferences.create(
                     PREFS_FILENAME,
                     masterKeyAlias,
@@ -64,10 +63,6 @@ public class EncryptionHelper {
         }
         return instance;
     }
-
-    // ==========================================
-    // Local Storage Methods (EncryptedSharedPreferences)
-    // ==========================================
 
     public void saveUserRole(String role) {
         sharedPreferences.edit().putString(KEY_USER_ROLE, role).apply();
@@ -106,10 +101,6 @@ public class EncryptionHelper {
         sharedPreferences.edit().clear().apply();
     }
 
-    // ==========================================
-    // QR Code AES Encryption / Decryption
-    // ==========================================
-
     private SecretKeySpec generateKey() throws Exception {
         final MessageDigest digest = MessageDigest.getInstance("SHA-256");
         byte[] bytes = QR_ENCRYPTION_KEY.getBytes(StandardCharsets.UTF_8);
@@ -143,5 +134,35 @@ public class EncryptionHelper {
             Log.e(TAG, "QR Decryption failed", e);
             return null;
         }
+    }
+
+    /**
+     * Extracts the Web Client ID (Type 3) from the saved Firebase JSON.
+     * This is required for Google Sign-In to work dynamically.
+     */
+    public String getWebClientId() {
+        String jsonConfig = getFirebaseConfig();
+        if (jsonConfig == null) return null;
+
+        try {
+            JSONObject root = new JSONObject(jsonConfig);
+            JSONArray clientArray = root.getJSONArray("client");
+            if (clientArray.length() > 0) {
+                JSONObject client = clientArray.getJSONObject(0);
+                JSONArray oauthClientArray = client.getJSONArray("oauth_client");
+
+                for (int i = 0; i < oauthClientArray.length(); i++) {
+                    JSONObject oauthClient = oauthClientArray.getJSONObject(i);
+                    int clientType = oauthClient.getInt("client_type");
+                    // Type 3 is the Web Client ID required for requestIdToken
+                    if (clientType == 3) {
+                        return oauthClient.getString("client_id");
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error extracting Web Client ID", e);
+        }
+        return null; // Return null if not found
     }
 }

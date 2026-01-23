@@ -23,8 +23,6 @@
     <application
         android:name=".InOutApplication"
         android:allowBackup="true"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
         android:icon="@drawable/inout"
         android:label="@string/app_name"
         android:roundIcon="@drawable/inout"

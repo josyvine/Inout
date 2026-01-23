@@ -46,7 +46,7 @@
             android:id="@+id/et_company_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inputType="textCompany" />
+            android:inputType="textCapWords" /> <!-- THIS LINE IS FIXED -->
     </com.google.android.material.textfield.TextInputLayout>
 
     <!-- JSON Upload Section -->

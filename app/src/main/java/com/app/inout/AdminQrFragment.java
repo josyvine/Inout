@@ -1,4 +1,4 @@
-package com.app.inout;
+package com.inout.app;
 
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -20,8 +20,9 @@ import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
 import com.journeyapps.barcodescanner.BarcodeEncoder;
-import com.app.inout.databinding.FragmentAdminQrBinding;
-import com.app.inout.utils.EncryptionHelper;
+
+import com.inout.app.databinding.FragmentAdminQrBinding;
+import com.inout.app.utils.EncryptionHelper;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -31,7 +32,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 /**
- * Fragment for generating and sharing the Company QR Code.
+ * Fragment responsible for generating and sharing the Company QR Code.
  */
 public class AdminQrFragment extends Fragment {
 
@@ -50,11 +51,13 @@ public class AdminQrFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         binding.btnGenerateQr.setOnClickListener(v -> generateCompanyQr());
-        
-        // FIXED: Changed from btnShare_qr to btnShareQr
+
+        // FIXED: Using CamelCase 'btnShareQr' generated from XML ID 'btn_share_qr'
         binding.btnShareQr.setOnClickListener(v -> {
             if (generatedQrBitmap != null) {
                 shareQrImage();
+            } else {
+                Toast.makeText(getContext(), "Generate a QR code first", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -67,7 +70,7 @@ public class AdminQrFragment extends Fragment {
         String projectId = encryptionHelper.getProjectId();
 
         if (configJson == null || projectId == null) {
-            Toast.makeText(getContext(), "Error: Config not found.", Toast.LENGTH_LONG).show();
+            Toast.makeText(getContext(), "Error: Config not found. Please re-setup.", Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -82,15 +85,15 @@ public class AdminQrFragment extends Fragment {
 
             if (encryptedPayload != null) {
                 generatedQrBitmap = encodeAsBitmap(encryptedPayload);
-                
+
                 if (generatedQrBitmap != null) {
                     binding.ivQrCode.setImageBitmap(generatedQrBitmap);
                     binding.ivQrCode.setVisibility(View.VISIBLE);
                     binding.tvPlaceholder.setVisibility(View.GONE);
-                    
-                    // FIXED: Changed from btnShare_qr to btnShareQr
+
+                    // FIXED: Using CamelCase 'btnShareQr'
                     binding.btnShareQr.setVisibility(View.VISIBLE); 
-                    
+
                     binding.tvInstruction.setText("Company: " + companyName);
                     Toast.makeText(getContext(), "QR Generated Successfully", Toast.LENGTH_SHORT).show();
                 }
@@ -103,18 +106,21 @@ public class AdminQrFragment extends Fragment {
 
     private void shareQrImage() {
         try {
+            // 1. Create a temporary file in the app's cache
             File cachePath = new File(requireContext().getCacheDir(), "images");
             cachePath.mkdirs(); 
             File newFile = new File(cachePath, "company_qr.png");
             FileOutputStream stream = new FileOutputStream(newFile);
-            
+
+            // 2. Write the bitmap to the file
             generatedQrBitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
             stream.close();
 
-            // Authority must match AndroidManifest.xml
+            // 3. Get URI using the authority defined in AndroidManifest.xml
             Uri contentUri = FileProvider.getUriForFile(requireContext(), "com.inout.app.fileprovider", newFile);
 
             if (contentUri != null) {
+                // 4. Launch the Android Share Sheet
                 Intent shareIntent = new Intent();
                 shareIntent.setAction(Intent.ACTION_SEND);
                 shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION); 
@@ -123,7 +129,7 @@ public class AdminQrFragment extends Fragment {
                 shareIntent.putExtra(Intent.EXTRA_SUBJECT, "Company Registration QR");
                 shareIntent.putExtra(Intent.EXTRA_TEXT, "Scan this QR code to join " + 
                         EncryptionHelper.getInstance(getContext()).getCompanyName());
-                
+
                 startActivity(Intent.createChooser(shareIntent, "Share QR via:"));
             }
         } catch (IOException e) {
@@ -134,6 +140,7 @@ public class AdminQrFragment extends Fragment {
 
     private Bitmap encodeAsBitmap(String content) throws WriterException {
         MultiFormatWriter multiFormatWriter = new MultiFormatWriter();
+        // QR Code Size 512x512
         BitMatrix bitMatrix = multiFormatWriter.encode(content, BarcodeFormat.QR_CODE, 512, 512);
         BarcodeEncoder barcodeEncoder = new BarcodeEncoder();
         return barcodeEncoder.createBitmap(bitMatrix);
